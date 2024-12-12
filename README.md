@@ -1,1 +1,1 @@
-## Classification Of cryptograhic Vulnerabilies and Security Assesment of Web appilcations - COVSAW
+## Classification of Cryptograhic Vulnerabilies and Security Assesment of Web Appilcations 
