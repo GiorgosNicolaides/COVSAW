@@ -1,0 +1,7 @@
+[] verify certificate chain
+[] check expiry date
+[] detevt self assigned certificates
+[] ensure hostname validation
+[] check revoked certificates
+[] enforce strong cipher suites
+[] test for mitm attacks
