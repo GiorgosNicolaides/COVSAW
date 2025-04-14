@@ -1,36 +1,109 @@
-## Classification of Cryptograhic Vulnerabilies and Security Assesment of Web Appilcations 
+# 🛡️ COVSAW
+
+> **Classification of Cryptographic Vulnerabilities and Security Assessment of Web Applications**
+
+COVSAW is a modular command-line tool that performs both static and dynamic analysis to uncover cryptographic vulnerabilities in Python applications and TLS-enabled web servers. Designed for educational, professional, or research purposes, COVSAW classifies common cryptographic implementation errors, insecure design patterns, and weak protocol configurations.
 
 ---
 
-## Features
+## 📦 Installation
 
-### 1. TLS Certificate Analysis (`tls_certificate_checker.py`)
-Performs deep inspection of a domain's TLS certificate. Includes:
-- Certificate expiry check
-- Self-signed certificate detection
-- Hostname validation (CN and SAN)
-- Issuer validation against trusted Greek CAs
-- OCSP-based revocation status check
-- Public key strength (RSA key size, EC curve security)
-- Signature algorithm validation (e.g., SHA-1 detection)
+1. **Clone the repository**:
+```bash
+git clone https://github.com/yourusername/covsaw.git
+cd covsaw
+```
 
-### 2. Fetch Trusted CAs from EU TSL (`fetch_greek_trusted_cas.py`)
-- Downloads the EU Trusted List and extracts all Qualified Trust Service Providers (QTSPs) for Greece (`EL`)
-- Saves results to `greek_trusted_cas.txt`
+2. **Install dependencies**:
+```bash
+pip install -r requirements.txt
+```
 
-### 3. Static Hash Analysis (`hash_analyzer.py`)
-AST-based static code analyzer for insecure hashing practices in Python:
-- Detects weak hash functions (e.g., MD5, SHA1)
-- Warns on potential custom hashing logic using XOR/bitwise operators
-- Highlights secure usage (e.g., PBKDF2, SHA-256)
-- Configurable via YAML rule file (`rules/hash_rules.yaml`)
+3. *(Optional)* Install in development mode for CLI access:
+```bash
+pip install -e .
+```
 
-### 4. RSA Security Checker (`rsa_security_checker.py`)
-AST-based scanner for insecure RSA usage in Python:
-- Detects hardcoded RSA keys (private/public)
-- Flags weak key sizes (<512 bits)
-- Detects insecure PRNG usage in key generation
-- Warns about missing padding (e.g., no OAEP in encryption)
-- Identifies duplicate or reused key material
+> **Python 3.9 or higher is required** due to reliance on `ast.unparse()` for source inspection.
 
+---
+
+## 🧪 How to Use
+
+Run COVSAW from the project root or after installing as a package:
+
+### 🔐 TLS Analysis
+```bash
+python cli.py --tls example.com
+```
+
+### 🏛️ PKI and Certificate Transparency
+```bash
+python cli.py --pki example.com
+```
+
+### 🔑 Static File-Based Analysis
+```bash
+python cli.py --passwords app.py
+python cli.py --symmetric app.py
+python cli.py --signatures app.py
+python cli.py --misuse app.py
+python cli.py --keymgmt app.py
+```
+
+### 🧰 Full Static Analysis
+```bash
+python cli.py --all app.py
+```
+
+---
+
+## 🧠 What the Tool Does
+
+COVSAW performs a **comprehensive audit of cryptographic usage**:
+
+- ✅ Fetches and inspects **TLS certificates** from live hosts
+- ✅ Checks **certificate validity, revocation (OCSP)**, hostname matching, signature/key strength
+- ✅ Audits Python source code for:
+  - ❌ Plaintext password storage
+  - ❌ Weak/insecure hash usage
+  - ❌ Missing salts or KDFs
+  - ❌ Hardcoded or static cryptographic keys
+  - ❌ Use of ECB, DES, XOR, or predictable IVs
+  - ❌ Improper protocol chaining (e.g., CBC+HMAC)
+  - ❌ AEAD misuse (e.g., no nonce/AAD/tag checks)
+  - ❌ Direct RSA usage without hybrid encryption
+  - ❌ Missing signature verification or insecure comparison
+
+Each module is independent and CWE-tagged, providing useful context about what class of vulnerability was found.
+
+---
+
+## 📄 Output
+
+The output is printed to the terminal and includes:
+
+- ✅ CWE classification (e.g., CWE-321: Hardcoded Key)
+- ✅ Line numbers of findings (for source code scans)
+- ✅ Host-specific details (for TLS checks)
+- ❌ Errors or warnings with clear messages when validation fails
+
+No data is exported or stored unless extended manually.
+
+---
+
+## 🎯 Who Is This For?
+
+- Students learning cryptography or secure development
+- Security professionals auditing Python apps or TLS configurations
+- Educators running crypto security workshops
+- Researchers exploring CWE classification and automated crypto misuse detection
+
+---
+
+## ⚖️ License
+
+COVSAW is licensed under the MIT License. See the `LICENSE` file for more.
+
+---
 

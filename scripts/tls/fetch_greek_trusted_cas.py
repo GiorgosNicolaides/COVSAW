@@ -1,5 +1,5 @@
-import requests
-from lxml import etree
+import requests # type: ignore
+from lxml import etree # type: ignore
 
 # URL for Greece (EL) Trusted List XML
 URL = "https://ec.europa.eu/tools/lotl/eu-lotl.xml"
