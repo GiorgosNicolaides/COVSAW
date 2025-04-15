@@ -1,8 +1,8 @@
 import os
 
-from detect_insecure_signature_algos import InsecureSignatureAlgoChecker
-from detect_missing_verification import MissingSignatureVerificationChecker
-from detect_nonconstant_compare import NonConstantSignatureCompareChecker
+from .detect_insecure_signature_algos import InsecureSignatureAlgoChecker
+from .detect_missing_verification import MissingSignatureVerificationChecker
+from .detect_nonconstant_compare import NonConstantSignatureCompareChecker
 
 def analyze_file(file_path):
     if not os.path.isfile(file_path):

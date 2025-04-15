@@ -1,6 +1,6 @@
 import os
-from detect_hardcoded_secrets import HardcodedSecretsChecker
-from detect_insecure_storage import InsecureStorageChecker
+from .detect_hardcoded_secrets import HardcodedSecretsChecker
+from .detect_insecure_storage import InsecureStorageChecker
 
 def analyze_file(file_path):
     if not os.path.isfile(file_path):

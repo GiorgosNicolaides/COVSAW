@@ -1,6 +1,6 @@
 import sys
-from ct_sct_checker import CTSCTChecker
-from pki_chain_analyzer import PKIChainAnalyzer
+from .ct_sct_checker import CTSCTChecker
+from .pki_chain_analyzer import PKIChainAnalyzer
 
 
 def analyze_pki(hostname):

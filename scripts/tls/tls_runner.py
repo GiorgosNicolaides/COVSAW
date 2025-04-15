@@ -1,9 +1,9 @@
 import sys
-from tls_certificate_checker import TLSCertificateChecker
-from tls_revocation_checker import TLSRevocationChecker
-from tls_crypto_strength_checker import TLSCryptoStrengthChecker
-from tls_protocol_cipher_checker import TLSProtocolCipherChecker
-from tls_extension_checker import TLSExtensionChecker
+from .tls_certificate_checker import TLSCertificateChecker
+from .tls_revocation_checker import TLSRevocationChecker
+from .tls_crypto_strength_checker import TLSCryptoStrengthChecker
+from .tls_protocol_cipher_checker import TLSProtocolCipherChecker
+from .tls_extension_checker import TLSExtensionChecker
 
 
 def analyze_tls(hostname):

@@ -2,7 +2,8 @@ import ssl
 import socket
 from cryptography import x509 # type: ignore
 from cryptography.hazmat.backends import default_backend # type: ignore
-from cryptography.x509.oid import ExtensionOID, ExtendedKeyUsageOID, KeyUsage # type: ignore
+from cryptography.x509 import ExtensionOID, ExtendedKeyUsageOID
+from cryptography.x509.extensions import KeyUsage
 
 
 class TLSExtensionChecker:

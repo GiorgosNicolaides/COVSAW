@@ -1,8 +1,8 @@
 import os
 
-from detect_plaintext_passwords import PlaintextPasswordChecker
-from detect_weak_password_hashing import WeakPasswordHashingChecker
-from detect_missing_salt_or_kdf import MissingSaltOrKDFChecker
+from .detect_plaintext_passwords import PlaintextPasswordChecker
+from .detect_weak_password_hashing import WeakPasswordHashingChecker
+from .detect_missing_salt_or_kdf import MissingSaltOrKDFChecker
 
 def analyze_file(file_path):
     if not os.path.isfile(file_path):

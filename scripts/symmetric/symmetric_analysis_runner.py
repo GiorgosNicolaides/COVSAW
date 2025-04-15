@@ -1,8 +1,8 @@
 import os
-from detect_ecb_des import ECBAndDESChecker
-from detect_xor_encryption import XORBasedEncryptionChecker
-from detect_hardcoded_keys import HardcodedKeyChecker
-from detect_weak_iv import WeakIVChecker
+from .detect_ecb_des import ECBAndDESChecker
+from .detect_xor_encryption import XORBasedEncryptionChecker
+from .detect_hardcoded_keys import HardcodedKeyChecker
+from .detect_weak_iv import WeakIVChecker
 
 def analyze_file(file_path):
     if not os.path.isfile(file_path):

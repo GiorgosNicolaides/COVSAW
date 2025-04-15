@@ -1,7 +1,7 @@
 import os
-from detect_custom_crypto_protocols import CustomCryptoProtocolChecker
-from detect_aead_misuse import AEADMisuseChecker
-from detect_hybrid_crypto_misuse import HybridCryptoMisuseChecker
+from .detect_custom_crypto_protocols import CustomCryptoProtocolChecker
+from .detect_aead_misuse import AEADMisuseChecker
+from .detect_hybrid_crypto_misuse import HybridCryptoMisuseChecker
 
 
 def analyze_file(file_path):
