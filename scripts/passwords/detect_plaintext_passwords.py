@@ -1,71 +1,70 @@
 import ast
-
-PASSWORD_VAR_NAMES = {
-    "password", "passwd", "pwd", "user_pass", "admin_password"
-}
+import re
+import sys
 
 class PlaintextPasswordChecker(ast.NodeVisitor):
-    def __init__(self, file_path):
-        self.file_path = file_path
-        self.issues = []
+    PASSWORD_VAR_PATTERN = re.compile(r"pass(word|wd|phrase|code)?|pw|cred(s|entials)?", re.IGNORECASE)
 
-    def report(self, lineno, message, cwe, severity="high"):
-        self.issues.append((lineno, f"{message} [CWE: {cwe}, Severity: {severity}]"))
+    def __init__(self, filename):
+        self.filename = filename
+        with open(filename, 'r', encoding='utf-8') as f:
+            self.lines = f.readlines()
+        self.issues = []
+        self.context_stack = []  # track class/function context
+
+    def report(self, lineno, varname, reason):
+        # Extract snippet
+        snippet = self.lines[lineno - 1].rstrip() if lineno <= len(self.lines) else ''
+        # Build context string
+        context = ".".join(self.context_stack) if self.context_stack else '<module>'
+        message = f"{self.filename}:{lineno} [{context}] variable '{varname}' {reason}: '{snippet}'"
+        self.issues.append(message)
+
+    def visit_FunctionDef(self, node):
+        self.context_stack.append(f"func {node.name}")
+        self.generic_visit(node)
+        self.context_stack.pop()
+
+    def visit_ClassDef(self, node):
+        self.context_stack.append(f"class {node.name}")
+        self.generic_visit(node)
+        self.context_stack.pop()
 
     def visit_Assign(self, node):
-        # Detect assignments like password = "123456"
-        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    if target.id.lower() in PASSWORD_VAR_NAMES:
-                        self.report(
-                            node.lineno,
-                            f"Hardcoded password assigned to variable '{target.id}'",
-                            "CWE-257"
-                        )
+        # Check each assignment target
+        for target in node.targets:
+            if isinstance(target, ast.Name) and self.PASSWORD_VAR_PATTERN.search(target.id):
+                # Check for literal string
+                val = node.value
+                if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                    self.report(node.lineno, target.id, 'assigned a hard-coded string literal')
+                # Check f-strings with embedded literals
+                elif isinstance(val, ast.JoinedStr):
+                    for part in val.values:
+                        if isinstance(part, ast.Constant) and isinstance(part.value, str) and part.value.strip():
+                            self.report(node.lineno, target.id, 'assigned an f-string containing a literal')
+                            break
         self.generic_visit(node)
 
     def visit_Call(self, node):
-        # Detect print(password) or open(...).write(password)
-        if isinstance(node.func, ast.Name) and node.func.id == "print":
+        # Detect print() or write() usage of password vars
+        is_print = isinstance(node.func, ast.Name) and node.func.id == 'print'
+        is_attr  = isinstance(node.func, ast.Attribute) and node.func.attr in ('print', 'write')
+        if is_print or is_attr:
+            func_name = node.func.id if is_print else node.func.attr
             for arg in node.args:
-                if isinstance(arg, ast.Name) and arg.id.lower() in PASSWORD_VAR_NAMES:
-                    self.report(
-                        node.lineno,
-                        f"Sensitive variable '{arg.id}' printed to console",
-                        "CWE-312"
-                    )
-
-        if isinstance(node.func, ast.Attribute) and node.func.attr == "write":
-            for arg in node.args:
-                if isinstance(arg, ast.Name) and arg.id.lower() in PASSWORD_VAR_NAMES:
-                    self.report(
-                        node.lineno,
-                        f"Sensitive variable '{arg.id}' written to file",
-                        "CWE-312"
-                    )
-
+                if isinstance(arg, ast.Name) and self.PASSWORD_VAR_PATTERN.search(arg.id):
+                    self.report(node.lineno, arg.id, f"passed to {func_name}()")
         self.generic_visit(node)
 
-    def analyze(self):
-        with open(self.file_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read(), filename=self.file_path)
-        self.visit(tree)
-        return self.issues
 
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 2:
-        print("Usage: python detect_plaintext_passwords.py <file_to_check.py>")
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <file.py>")
         sys.exit(1)
 
     checker = PlaintextPasswordChecker(sys.argv[1])
-    results = checker.analyze()
-
-    if not results:
-        print("No plaintext password issues found.")
-    else:
-        print("Plaintext password issues detected:")
-        for line, issue in results:
-            print(f"Line {line}: {issue}")
+    tree = ast.parse(open(sys.argv[1], 'r', encoding='utf-8').read(), sys.argv[1])
+    checker.visit(tree)
+    for issue in checker.issues:
+        print(issue)

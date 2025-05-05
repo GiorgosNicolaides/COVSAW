@@ -11,13 +11,13 @@ from scripts.passwords.password_storage_runner import analyze_file as analyze_pa
 from scripts.signatures.signature_scheme_runner import analyze_file as analyze_signatures
 
 # Symmetric crypto
-from scripts.symmetric.symmetric_crypto_runner import analyze_file as analyze_symmetric
+from scripts.symmetric.symmetric_analysis_runner import analyze_file as analyze_symmetric
 
 # Protocol misuse
 from scripts.misuse.misuse_runner import analyze_file as analyze_misuse
 
 # Key management
-from scripts.key_management.key_management_runner import analyze_file as analyze_key_mgmt
+from scripts.key.key_management_runner import analyze_file as analyze_key_mgmt
 
 # PKI / Certificate Transparency
 from scripts.pki.pki_runner import analyze_pki
