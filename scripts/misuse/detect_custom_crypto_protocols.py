@@ -1,72 +1,101 @@
 import ast
+import sys
 
-BLOCK_CIPHER_MODES = {"MODE_CBC", "MODE_ECB", "MODE_CFB"}
-HMAC_IMPORTS = {"hmac", "HMAC"}
-CRYPTO_LIBS = {"Crypto", "cryptography"}
-SUSPICIOUS_COMPOSITION = ["encrypt", "digest", "hexdigest", "update"]
+# Block cipher classes and insecure modes
+BLOCK_CIPHER_CLASSES = {
+    'AES', 'DES', 'Blowfish', 'ARC2', 'ARC4', 'Camellia'
+}
+INSECURE_MODES = {'ECB'}
 
 class CustomCryptoProtocolChecker(ast.NodeVisitor):
-    def __init__(self, file_path):
-        self.file_path = file_path
+    def __init__(self, filename):
+        self.filename = filename
+        with open(filename, 'r', encoding='utf-8') as f:
+            self.lines = f.readlines()
         self.issues = []
+        # Stack of scopes to detect HMAC in same context
+        self.scopes = []
 
-    def report(self, lineno, message, cwe="CWE-327", severity="high"):
-        self.issues.append((lineno, f"{message} [CWE: {cwe}, Severity: {severity}]"))
+    def report(self, lineno, message, cwe=None, severity=None):
+        snippet = self.lines[lineno - 1].rstrip() if lineno <= len(self.lines) else ''
+        parts = []
+        if cwe:
+            parts.append(f"CWE: {cwe}")
+        if severity:
+            parts.append(f"Severity: {severity}")
+        meta = f" [{', '.join(parts)}]" if parts else ''
+        self.issues.append((lineno, f"{message}{meta}: '{snippet}'"))
+
+    def visit_Module(self, node):
+        # module-level scope
+        self.scopes.append({'ciphers': [], 'hmac': False})
+        self.generic_visit(node)
+        self._analyze_scope(self.scopes.pop())
+
+    def visit_FunctionDef(self, node):
+        # function-level scope
+        self.scopes.append({'ciphers': [], 'hmac': False})
+        self.generic_visit(node)
+        self._analyze_scope(self.scopes.pop())
+        # do not re-enter child functions into parent scope
 
     def visit_Call(self, node):
-        # Detect use of block modes that need manual integrity
-        if isinstance(node.func, ast.Attribute):
-            if node.func.attr in BLOCK_CIPHER_MODES:
-                self.report(
-                    node.lineno,
-                    f"Manual cipher mode used: {node.func.attr} — consider AEAD (GCM/ChaCha20-Poly1305)",
-                    "CWE-327"
-                )
-
-        # Detect separate encrypt() + digest()/hmac() chains
-        if isinstance(node.func, ast.Attribute):
-            if node.func.attr in SUSPICIOUS_COMPOSITION:
-                if any(isinstance(arg, ast.Call) and isinstance(arg.func, ast.Attribute) and arg.func.attr == "encrypt"
-                       for arg in node.args):
-                    self.report(
-                        node.lineno,
-                        "Manual composition of encryption + MAC detected — use AEAD instead",
-                        "CWE-294"
-                    )
-
+        # Detect HMAC usage: hmac.new(...)
+        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+            if node.func.value.id == 'hmac' and node.func.attr == 'new':
+                self.scopes[-1]['hmac'] = True
+        # Detect block cipher instantiation: AES.new(key, mode)
+        if isinstance(node.func, ast.Attribute) and node.func.attr == 'new':
+            cls = node.func.value
+            if isinstance(cls, ast.Name) and cls.id in BLOCK_CIPHER_CLASSES:
+                mode = None
+                # positional mode arg
+                if len(node.args) >= 2:
+                    arg = node.args[1]
+                    if isinstance(arg, ast.Attribute):
+                        mode = arg.attr.split('_')[-1]
+                # keyword mode arg
+                for kw in node.keywords:
+                    if kw.arg == 'mode' and isinstance(kw.value, ast.Attribute):
+                        mode = kw.value.attr.split('_')[-1]
+                if mode:
+                    self.scopes[-1]['ciphers'].append((node.lineno, mode))
         self.generic_visit(node)
 
-    def visit_ImportFrom(self, node):
-        # Warn if importing manual block ciphers from pycrypto/cryptography
-        if node.module and any(lib in node.module for lib in CRYPTO_LIBS):
-            for name in node.names:
-                if name.name.lower() in {"cipher", "hmac"}:
-                    self.report(
-                        node.lineno,
-                        f"Custom crypto primitive imported: {name.name}",
-                        "CWE-327",
-                        "medium"
-                    )
+    def _analyze_scope(self, scope):
+        for lineno, mode in scope['ciphers']:
+            if mode in INSECURE_MODES:
+                self.report(
+                    lineno,
+                    f"Block cipher mode {mode} is insecure; avoid {mode}",
+                    "CWE-327",
+                    "high"
+                )
+            elif not scope['hmac']:
+                # mode is secure but no authentication
+                self.report(
+                    lineno,
+                    f"Mode {mode} used without authentication (MAC)",
+                    "CWE-300",
+                    "medium"
+                )
 
     def analyze(self):
-        with open(self.file_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read(), filename=self.file_path)
+        with open(self.filename, 'r', encoding='utf-8') as f:
+            source = f.read()
+        tree = ast.parse(source, filename=self.filename)
         self.visit(tree)
         return self.issues
 
-
-if __name__ == "__main__":
-    import sys
+if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print("Usage: python detect_custom_crypto_protocols.py <file_to_check.py>")
+        print(f"Usage: python {sys.argv[0]} <file_to_check.py>")
         sys.exit(1)
-
     checker = CustomCryptoProtocolChecker(sys.argv[1])
-    results = checker.analyze()
-
-    if not results:
-        print("No custom crypto protocol misuse detected.")
+    issues = checker.analyze()
+    if not issues:
+        print("No custom crypto protocol issues detected.")
     else:
-        print("Potential misuse of crypto primitives:")
-        for line, issue in results:
-            print(f"Line {line}: {issue}")
+        print("Custom crypto protocol issues detected:")
+        for lineno, issue in issues:
+            print(f"Line {lineno}: {issue}")
