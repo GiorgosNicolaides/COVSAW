@@ -1,3 +1,26 @@
 # Ignore Python bytecode caches
 __pycache__/
+# Ignore Python compiled files
 *.py[cod]
+# Ignore Python test cache
+.pytest_cache/
+# Ignore Python coverage reports
+.coverage
+# Ignore Python logs
+*.log
+# Ignore Python egg files
+*.egg-info/
+*.egg
+# Ignore Python distribution files
+dist/
+build/
+# Ignore Python virtual environments
+.venv/
+venv/
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+
+scripts/signatures/__pycache__/detect_nonconstant_compare.cpython-312.pyc
+scripts/signatures/__pycache__/detect_missing_verification.cpython-312.pyc
+scripts/signatures/__pycache__/detect_insecure_signature_algos.cpython-312.pyc

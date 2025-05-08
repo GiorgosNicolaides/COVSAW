@@ -28,7 +28,6 @@ def main():
         description="CovS.A.W. — Cryptographic Vulnerability Static Analysis Workshop"
     )
     parser.add_argument("--tls", metavar="HOST", help="Run TLS analysis on a live host")
-    parser.add_argument("--pki", metavar="HOST", help="Check PKI chain & CT logs")
     parser.add_argument("--passwords", metavar="FILE", help="Analyze password storage")
     parser.add_argument("--signatures", metavar="FILE", help="Analyze digital signature usage")
     parser.add_argument("--symmetric", metavar="FILE", help="Analyze symmetric encryption practices")
@@ -42,9 +41,6 @@ def main():
 
     if args.tls:
         analyze_tls(args.tls)
-
-    if args.pki:
-        analyze_pki(args.pki)
 
     if args.passwords:
         analyze_passwords(args.passwords)

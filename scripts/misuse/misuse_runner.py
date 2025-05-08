@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import sys
 import argparse
@@ -39,12 +38,12 @@ def analyze_file(file_path, checkers, verbose=False):
             found = checker.analyze()
         except Exception as e:
             # If a checker itself errors out, report it rather than crash
-            issues.append((file_path, 0, f"⚠️ Checker {Checker.__name__} crashed: {e}"))
+            issues.append((file_path, 0, f"Checker {Checker.__name__} crashed: {e}"))
             continue
         for lineno, msg in found:
             issues.append((file_path, lineno, msg))
     if verbose and not issues:
-        print(f"✅ OK: {file_path}")
+        print(f"OK: {file_path}")
     return issues
 
 def main():
@@ -83,7 +82,7 @@ def main():
         print(json.dumps(output, indent=2))
     else:
         if not all_issues:
-            print("✅ No cryptographic misuse detected.")
+            print("No cryptographic misuse detected.")
         else:
             for f, lineno, msg in sorted(all_issues):
                 print(f"{f}:{lineno}: {msg}")
