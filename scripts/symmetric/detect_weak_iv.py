@@ -1,71 +1,98 @@
 import ast
+import os
+import toml
 
-# Known insecure randomness sources
-WEAK_RANDOM_SOURCES = {
-    "random", "random.random", "random.randint", "random.getrandbits", "random.seed"
+# Default configuration for weak IV detection
+DEFAULT_CONFIG = {
+    'iv_arg_names': ['iv', 'nonce'],
 }
-SUSPICIOUS_IV_NAMES = {"iv", "nonce", "initialization_vector", "counter"}
 
-class WeakIVChecker(ast.NodeVisitor):
-    def __init__(self, file_path):
+class SymmetricChecker(ast.NodeVisitor):
+    """
+    Base class for symmetric encryption-related AST checkers.
+    """
+    NAME = 'symmetric-checker'
+    CWECODE = None
+    SEVERITY = 'MEDIUM'
+
+    def __init__(self, file_path, config=None):
         self.file_path = file_path
         self.issues = []
+        # Make a fresh copy of default config
+        self.config = config or DEFAULT_CONFIG.copy()
 
-    def report(self, lineno, message, cwe, severity="high"):
-        self.issues.append((lineno, f"{message} [CWE: {cwe}, Severity: {severity}]"))
-
-    def visit_Call(self, node):
-        # Check function calls that use insecure randomness
-        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
-            full_func = f"{node.func.value.id}.{node.func.attr}"
-            if full_func in WEAK_RANDOM_SOURCES:
-                self.report(
-                    node.lineno,
-                    f"Weak random function used for IV/nonce: {full_func}",
-                    "CWE-330"
-                )
-        self.generic_visit(node)
-
-    def visit_Assign(self, node):
-        # Check if an IV or nonce is assigned a weak source (e.g., random, constant)
-        if isinstance(node.targets[0], ast.Name):
-            var_name = node.targets[0].id.lower()
-            if var_name in SUSPICIOUS_IV_NAMES:
-                if isinstance(node.value, ast.Constant):
-                    self.report(
-                        node.lineno,
-                        f"IV/nonce '{var_name}' is statically assigned a constant value",
-                        "CWE-329"
-                    )
-                elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute):
-                    func_name = f"{node.value.func.value.id}.{node.value.func.attr}"
-                    if func_name in WEAK_RANDOM_SOURCES:
-                        self.report(
-                            node.lineno,
-                            f"IV/nonce '{var_name}' generated using insecure PRNG: {func_name}",
-                            "CWE-330"
-                        )
-        self.generic_visit(node)
+    def report(self, lineno, message, cwe=None, severity=None):
+        cwe = cwe or self.CWECODE
+        severity = severity or self.SEVERITY
+        self.issues.append((lineno, f"{message} [CWE {cwe}, Severity {severity}]"))
 
     def analyze(self):
-        with open(self.file_path, "r", encoding="utf-8") as f:
+        # Load user configuration if present
+        cfg_path = os.getenv('SYM_CHECK_CONFIG')
+        if cfg_path and os.path.isfile(cfg_path):
+            try:
+                user_cfg = toml.load(cfg_path)
+                self.config.update(user_cfg)
+            except Exception:
+                pass
+
+        with open(self.file_path, encoding='utf-8') as f:
             tree = ast.parse(f.read(), filename=self.file_path)
         self.visit(tree)
         return self.issues
 
+class WeakIVChecker(SymmetricChecker):
+    """
+    Detect use of hardcoded or static IVs (e.g., all-zero IVs or repeated zero).
+    """
+    NAME = 'weak-iv'
+    CWECODE = 'CWE-330'
+    SEVERITY = 'HIGH'
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 2:
-        print("Usage: python detect_weak_iv.py <file_to_check.py>")
-        sys.exit(1)
+    def __init__(self, file_path, config=None):
+        super().__init__(file_path, config)
+        # Case-insensitive set of argument names to treat as IVs
+        self.iv_names = {n.lower() for n in self.config.get('iv_arg_names', [])}
 
-    checker = WeakIVChecker(sys.argv[1])
-    results = checker.analyze()
+    def _is_zero_bytes(self, node):
+        # Matches literal bytes/bytearray with all zeros
+        if isinstance(node, ast.Constant) and isinstance(node.value, (bytes, bytearray)):
+            return all(b == 0 for b in node.value)
+        return False
 
-    if not results:
-        print("No weak IV or nonce issues detected.")
-    else:
-        print("Potential weak IV/nonce usage detected:")
-        for line, issue in results:
-            print(f"Line {line}: {issue}")
+    def _is_repeated_zero_binop(self, node):
+        # Matches pattern: b'\x00' * N (N > 0)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+            left, right = node.left, node.right
+            if (
+                isinstance(left, ast.Constant)
+                and isinstance(left.value, (bytes, bytearray))
+                and len(left.value) == 1
+                and left.value[0] == 0
+                and isinstance(right, ast.Constant)
+                and isinstance(right.value, int)
+                and right.value > 0
+            ):
+                return True
+        return False
+
+    def visit_Call(self, node):
+        # Check keyword args named 'iv' or 'nonce'
+        for kw in node.keywords:
+            if kw.arg and kw.arg.lower() in self.iv_names:
+                iv_node = kw.value
+                if self._is_zero_bytes(iv_node) or self._is_repeated_zero_binop(iv_node):
+                    self.report(
+                        node.lineno,
+                        f"Use of weak static IV in argument '{kw.arg}'"
+                    )
+        # Check positional: IV often passed as 2nd or 3rd positional arg
+        for idx in (1, 2):
+            if len(node.args) > idx:
+                iv_node = node.args[idx]
+                if self._is_zero_bytes(iv_node) or self._is_repeated_zero_binop(iv_node):
+                    self.report(
+                        node.lineno,
+                        f"Use of weak static IV in positional argument #{idx+1}"
+                    )
+        self.generic_visit(node)
