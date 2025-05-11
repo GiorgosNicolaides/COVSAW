@@ -1,88 +1,124 @@
-import ssl
-import socket
-import idna
-from cryptography import x509 # type: ignore
-from cryptography.hazmat.backends import default_backend # type: ignore
-from cryptography.x509.ocsp import OCSPRequestBuilder, OCSPResponseStatus # type: ignore
-from cryptography.x509.oid import ExtensionOID
+# tls_revocation_checker.py
+from tls_base import TLSChecker
+from cryptography import x509
+from cryptography.x509.ocsp import OCSPRequestBuilder, load_der_ocsp_response, OCSPCertStatus
+from cryptography.x509.oid import AuthorityInformationAccessOID
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.hazmat.backends import default_backend
 import requests
 
+class TLSRevocationChecker(TLSChecker):
+    """
+    Performs OCSP-based revocation checking of the leaf certificate.
+    """
+    NAME = 'revocation'
 
-class TLSRevocationChecker:
-    def __init__(self, hostname, port=443):
-        self.hostname = hostname
-        self.port = port
-        self.cert = None
-        self.issuer_cert = None
-        self.parsed_cert = None
+    def run_check(self):
+        issues = []
+        cert = self.leaf
 
-    def _fetch_certificate_chain(self):
-        ctx = ssl.create_default_context()
-        conn = ctx.wrap_socket(socket.socket(), server_hostname=self.hostname)
-        conn.settimeout(5)
-        conn.connect((self.hostname, self.port))
-        der_cert = conn.getpeercert(binary_form=True)
-        self.parsed_cert = x509.load_der_x509_certificate(der_cert, default_backend())
-        return self.parsed_cert
-
-    def _get_ocsp_url(self, cert):
+        # 1) Locate OCSP and CA Issuers URLs in AIA extension
         try:
-            aia = cert.extensions.get_extension_for_oid(ExtensionOID.AUTHORITY_INFORMATION_ACCESS).value
-            for access_desc in aia:
-                if access_desc.access_method.dotted_string == "1.3.6.1.5.5.7.48.1":  # OCSP
-                    return access_desc.access_location.value
-        except Exception:
-            pass
-        return None
+            aia = cert.extensions.get_extension_for_class(
+                x509.AuthorityInformationAccess
+            ).value
+            ocsp_urls = [
+                desc.access_location.value
+                for desc in aia
+                if desc.access_method == AuthorityInformationAccessOID.OCSP
+            ]
+            issuer_urls = [
+                desc.access_location.value
+                for desc in aia
+                if desc.access_method == AuthorityInformationAccessOID.CA_ISSUERS
+            ]
+        except x509.ExtensionNotFound:
+            issues.append((
+                'no_ocsp_extension',
+                'No Authority Information Access extension (OCSP/CA Issuers)'
+            ))
+            return issues
 
-    def _build_ocsp_request(self, cert, issuer_cert):
-        builder = OCSPRequestBuilder()
-        builder = builder.add_certificate(cert, issuer_cert, cert.signature_hash_algorithm)
-        return builder.build()
+        if not ocsp_urls:
+            issues.append(('no_ocsp_url', 'No OCSP responder URL found in AIA'))
+            return issues
+        if not issuer_urls:
+            issues.append(('no_ca_issuer_url', 'No CA Issuers URL found in AIA'))
+            return issues
 
-    def _fetch_issuer_cert(self, cert):
-        # This method assumes issuer cert is self-signed (works best with intermediate CA responses preloaded)
-        return cert  # fallback (can be replaced with cache of known CAs if needed)
-
-    def check_ocsp_revocation(self):
-        cert = self._fetch_certificate_chain()
-        issuer_cert = self._fetch_issuer_cert(cert)
-        ocsp_url = self._get_ocsp_url(cert)
-
-        if not ocsp_url:
-            return False, "No OCSP responder URL found in certificate"
-
+        # 2) Fetch the issuer certificate via CA Issuers URL
         try:
-            req = self._build_ocsp_request(cert, issuer_cert)
-            headers = {'Content-Type': 'application/ocsp-request', 'Accept': 'application/ocsp-response'}
-            response = requests.post(ocsp_url, data=req.public_bytes(), headers=headers, timeout=5)
-
-            if response.status_code != 200:
-                return False, f"OCSP responder error: {response.status_code}"
-
-            ocsp_resp = x509.ocsp.load_der_ocsp_response(response.content)
-
-            if ocsp_resp.response_status != OCSPResponseStatus.SUCCESSFUL:
-                return False, f"OCSP response unsuccessful: {ocsp_resp.response_status}"
-
-            cert_status = ocsp_resp.certificate_status
-            if cert_status == x509.ocsp.OCSPCertStatus.REVOKED:
-                return False, f"Certificate has been revoked (OCSP)"
-            elif cert_status == x509.ocsp.OCSPCertStatus.GOOD:
-                return True, "Certificate is valid (OCSP)"
-            else:
-                return False, "OCSP returned unknown certificate status"
+            res = requests.get(issuer_urls[0], timeout=self.timeout)
+            res.raise_for_status()
+            issuer_cert = x509.load_der_x509_certificate(res.content, default_backend())
         except Exception as e:
-            return False, f"OCSP check failed: {e}"
+            issues.append((
+                'issuer_fetch_error',
+                f'Failed to fetch issuer certificate: {e}'
+            ))
+            return issues
 
+        # 3) Build an OCSP request for the leaf certificate
+        try:
+            builder = OCSPRequestBuilder().add_certificate(
+                cert,
+                issuer_cert,
+                hashes.SHA1()
+            )
+            req = builder.build()
+            data = req.public_bytes(Encoding.DER)
+        except Exception as e:
+            issues.append((
+                'ocsp_build_error',
+                f'Failed to build OCSP request: {e}'
+            ))
+            return issues
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 2:
-        print("Usage: python tls_revocation_checker.py <hostname>")
-        sys.exit(1)
+        # 4) Send the OCSP request to the responder URL
+        try:
+            headers = {'Content-Type': 'application/ocsp-request'}
+            resp = requests.post(
+                ocsp_urls[0], data=data, headers=headers, timeout=self.timeout
+            )
+            resp.raise_for_status()
+            ocsp_resp = load_der_ocsp_response(resp.content)
+        except Exception as e:
+            issues.append((
+                'ocsp_request_error',
+                f'OCSP request failed: {e}'
+            ))
+            return issues
 
-    checker = TLSRevocationChecker(sys.argv[1])
-    success, message = checker.check_ocsp_revocation()
-    status = "success" if success else "fail"
-    print(f"{status} {message}")
+        # 5) Interpret the OCSP response status
+        status = ocsp_resp.certificate_status
+        if status == OCSPCertStatus.REVOKED:
+            issues.append((
+                'revoked',
+                'Certificate has been revoked according to OCSP'
+            ))
+        elif status == OCSPCertStatus.GOOD:
+            # Save OCSP response for summary
+            self._ocsp_response = ocsp_resp
+        else:
+            issues.append((
+                'ocsp_unknown',
+                'OCSP responder returned unknown status'
+            ))
+
+        return issues
+
+    def summary(self):
+        """
+        Provides a detailed summary when OCSP status is good,
+        including thisUpdate and nextUpdate timestamps.
+        """
+        if hasattr(self, '_ocsp_response'):
+            resp = self._ocsp_response
+            this_update = resp.this_update.isoformat()
+            next_update = resp.next_update.isoformat() if resp.next_update else 'N/A'
+            return (
+                'ok',
+                f"OCSP status: good (thisUpdate={this_update}, nextUpdate={next_update})"
+            )
+        return ('ok', 'OCSP status: good')

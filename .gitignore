@@ -24,3 +24,10 @@ venv/
 scripts/signatures/__pycache__/detect_nonconstant_compare.cpython-312.pyc
 scripts/signatures/__pycache__/detect_missing_verification.cpython-312.pyc
 scripts/signatures/__pycache__/detect_insecure_signature_algos.cpython-312.pyc
+scripts/tls/__pycache__/tls_certificate_checker.cpython-312.pyc
+scripts/tls/__pycache__/tls_certificate_checker.cpython-312.pyc
+scripts/tls/__pycache__/tls_crypto_strength_checker.cpython-312.pyc
+scripts/tls/__pycache__/tls_extension_checker.cpython-312.pyc
+scripts/tls/__pycache__/tls_protocol_cipher_checker.cpython-312.pyc
+scripts/tls/__pycache__/tls_revocation_checker.cpython-312.pyc
+scripts/tls/__pycache__/tls_runner.cpython-312.pyc

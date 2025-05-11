@@ -1,80 +1,70 @@
-import ssl
-import socket
-from cryptography import x509 # type: ignore
-from cryptography.hazmat.backends import default_backend # type: ignore
-from cryptography.x509 import ExtensionOID, ExtendedKeyUsageOID
-from cryptography.x509.extensions import KeyUsage
+from tls_base import TLSChecker
+from cryptography import x509
 
+class TLSExtensionChecker(TLSChecker):
+    NAME = 'extension'
 
-class TLSExtensionChecker:
-    def __init__(self, hostname, port=443):
-        self.hostname = hostname
-        self.port = port
-        self.cert = None
-        self.parsed_cert = None
+    def run_check(self):
+        issues = []
+        cert = self.leaf
 
-    def fetch_certificate(self):
-        ctx = ssl.create_default_context()
-        with ctx.wrap_socket(socket.socket(), server_hostname=self.hostname) as s:
-            s.settimeout(5)
-            s.connect((self.hostname, self.port))
-            self.cert = s.getpeercert(binary_form=True)
-            self.parsed_cert = x509.load_der_x509_certificate(self.cert, default_backend())
-
-    def check_basic_constraints(self):
+        # 1) Key Usage
         try:
-            ext = self.parsed_cert.extensions.get_extension_for_oid(ExtensionOID.BASIC_CONSTRAINTS)
-            if ext.value.ca:
-                return False, "End-entity certificate incorrectly marked as a CA (basicConstraints: CA=TRUE)"
-            return True, "Certificate is correctly marked as CA=FALSE"
+            ku = cert.extensions.get_extension_for_class(x509.KeyUsage).value
+            if not (ku.digital_signature or ku.key_encipherment):
+                issues.append(('missing_key_usage',
+                    "Neither digitalSignature nor keyEncipherment set"))
         except x509.ExtensionNotFound:
-            return False, "Missing basicConstraints extension"
+            issues.append(('no_key_usage', "KeyUsage extension missing"))
 
-    def check_key_usage(self):
+        # 2) Extended Key Usage
         try:
-            ext = self.parsed_cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
-            usage: KeyUsage = ext.value
-            if not (usage.digital_signature or usage.key_encipherment):
-                return False, "Missing digitalSignature and keyEncipherment in keyUsage"
-            return True, f"keyUsage: digitalSignature={usage.digital_signature}, keyEncipherment={usage.key_encipherment}"
+            eku = cert.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
+            if x509.ExtendedKeyUsageOID.SERVER_AUTH not in eku:
+                issues.append(('missing_eku', "No serverAuth EKU"))
         except x509.ExtensionNotFound:
-            return False, "Missing keyUsage extension"
+            issues.append(('no_eku', "ExtendedKeyUsage extension missing"))
 
-    def check_extended_key_usage(self):
+        # 3) CRL DP and AIA
+        for ext_cls, code in [
+            (x509.CRLDistributionPoints, 'no_crl_dp'),
+            (x509.AuthorityInformationAccess, 'no_aia')
+        ]:
+            try:
+                cert.extensions.get_extension_for_class(ext_cls)
+            except x509.ExtensionNotFound:
+                issues.append((code, f"{ext_cls.__name__} missing"))
+
+        return issues
+
+    def summary(self):
+        cert = self.leaf
+        kus = []
         try:
-            ext = self.parsed_cert.extensions.get_extension_for_oid(ExtensionOID.EXTENDED_KEY_USAGE)
-            eku_oids = ext.value
-            if ExtendedKeyUsageOID.SERVER_AUTH not in eku_oids:
-                return False, "Missing serverAuth in extendedKeyUsage"
-            return True, "extendedKeyUsage includes serverAuth"
+            ku = cert.extensions.get_extension_for_class(x509.KeyUsage).value
+            if ku.digital_signature:    kus.append('digitalSignature')
+            if ku.key_encipherment:     kus.append('keyEncipherment')
         except x509.ExtensionNotFound:
-            return False, "Missing extendedKeyUsage extension"
+            pass
 
-    def run(self):
-        self.fetch_certificate()
+        ekus = []
+        try:
+            eku = cert.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
+            ekus = [oid._name for oid in eku]
+        except x509.ExtensionNotFound:
+            pass
 
-        bc_ok, bc_msg = self.check_basic_constraints()
-        ku_ok, ku_msg = self.check_key_usage()
-        eku_ok, eku_msg = self.check_extended_key_usage()
+        has_crl = True
+        try:
+            cert.extensions.get_extension_for_class(x509.CRLDistributionPoints)
+        except x509.ExtensionNotFound:
+            has_crl = False
+        has_aia = True
+        try:
+            cert.extensions.get_extension_for_class(x509.AuthorityInformationAccess)
+        except x509.ExtensionNotFound:
+            has_aia = False
 
-        return {
-            "basic_constraints": bc_msg,
-            "key_usage": ku_msg,
-            "extended_key_usage": eku_msg,
-            "basic_ok": bc_ok,
-            "keyusage_ok": ku_ok,
-            "extkeyusage_ok": eku_ok
-        }
-
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 2:
-        print("Usage: python tls_extension_checker.py <hostname>")
-        sys.exit(1)
-
-    checker = TLSExtensionChecker(sys.argv[1])
-    result = checker.run()
-    for key, value in result.items():
-        if not key.endswith("_ok"):
-            print(f"{key}: {value}")
+        msg = (f"KeyUsage={kus or 'none'}; EKU={ekus or 'none'}; "
+               f"CRLDP={'yes' if has_crl else 'no'}; AIA={'yes' if has_aia else 'no'}")
+        return ('ok', msg)

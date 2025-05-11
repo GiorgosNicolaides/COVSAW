@@ -1,73 +1,37 @@
-import ssl
-import socket
-from cryptography import x509 # type: ignore
-from cryptography.hazmat.backends import default_backend # type: ignore
-from cryptography.hazmat.primitives.asymmetric import rsa, ec # type: ignore
+from tls_base import TLSChecker
+from cryptography.hazmat.primitives.asymmetric import rsa, ec
 
+class TLSCryptoStrengthChecker(TLSChecker):
+    NAME = 'crypto-strength'
 
-WEAK_SIGNATURE_ALGOS = {"md5", "sha1", "md2", "md4"}
-DISALLOWED_CURVES = {"secp192r1", "sect163k1", "secp160r1"}  # Deprecated or too small
+    def run_check(self):
+        issues = []
+        key = self.leaf.public_key()
 
+        # RSA key strength
+        if isinstance(key, rsa.RSAPublicKey):
+            size = key.key_size
+            if size < 2048:
+                issues.append(('weak_rsa', f"RSA key size {size} bits"))
 
-class TLSCryptoStrengthChecker:
-    def __init__(self, hostname, port=443):
-        self.hostname = hostname
-        self.port = port
-        self.cert = None
-        self.parsed_cert = None
+        # EC key strength
+        if isinstance(key, ec.EllipticCurvePublicKey):
+            curve = key.curve.name
+            weak = {'secp192r1', 'sect163k1'}
+            if curve in weak:
+                issues.append(('weak_ec', f"Insecure curve {curve}"))
 
-    def fetch_certificate(self):
-        ctx = ssl.create_default_context()
-        with ctx.wrap_socket(socket.socket(), server_hostname=self.hostname) as s:
-            s.settimeout(5)
-            s.connect((self.hostname, self.port))
-            self.cert = s.getpeercert(binary_form=True)
-            self.parsed_cert = x509.load_der_x509_certificate(self.cert, default_backend())
+        # Signature algorithm strength
+        sig = self.leaf.signature_hash_algorithm
+        if sig and sig.name.lower() in {'md2', 'md5', 'sha1'}:
+            issues.append(('weak_signature', f"Cert uses {sig.name}"))
 
-    def check_key_size(self):
-        pubkey = self.parsed_cert.public_key()
+        return issues
 
-        if isinstance(pubkey, rsa.RSAPublicKey):
-            key_size = pubkey.key_size
-            if key_size < 2048:
-                return False, f"Weak RSA key size: {key_size} bits"
-            return True, f"RSA key size: {key_size} bits"
-
-        if isinstance(pubkey, ec.EllipticCurvePublicKey):
-            curve_name = pubkey.curve.name
-            if curve_name in DISALLOWED_CURVES:
-                return False, f"Weak elliptic curve used: {curve_name}"
-            return True, f"Elliptic curve: {curve_name}"
-
-        return False, "Unsupported or unknown public key type"
-
-    def check_signature_algorithm(self):
-        sig_algo = self.parsed_cert.signature_hash_algorithm.name.lower()
-        if sig_algo in WEAK_SIGNATURE_ALGOS:
-            return False, f"Weak signature algorithm: {sig_algo}"
-        return True, f"Signature algorithm: {sig_algo}"
-
-    def run(self):
-        self.fetch_certificate()
-        key_ok, key_msg = self.check_key_size()
-        sig_ok, sig_msg = self.check_signature_algorithm()
-
-        return {
-            "key_strength": key_msg,
-            "signature_algorithm": sig_msg,
-            "key_ok": key_ok,
-            "signature_ok": sig_ok
-        }
-
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 2:
-        print("Usage: python tls_crypto_strength_checker.py <hostname>")
-        sys.exit(1)
-
-    checker = TLSCryptoStrengthChecker(sys.argv[1])
-    result = checker.run()
-    for key, value in result.items():
-        if not key.endswith("_ok"):
-            print(f"{key}: {value}")
+    def summary(self):
+        key = self.leaf.public_key()
+        if isinstance(key, rsa.RSAPublicKey):
+            return ('ok', f"RSA key size {key.key_size} bits; signature {self.leaf.signature_hash_algorithm.name}")
+        if isinstance(key, ec.EllipticCurvePublicKey):
+            return ('ok', f"EC curve {key.curve.name}; signature {self.leaf.signature_hash_algorithm.name}")
+        return ('ok', 'Public key type is non-RSA/EC')

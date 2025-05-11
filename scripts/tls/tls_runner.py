@@ -1,67 +1,73 @@
+#!/usr/bin/env python3
+import os
 import sys
-from .tls_certificate_checker import TLSCertificateChecker
-from .tls_revocation_checker import TLSRevocationChecker
-from .tls_crypto_strength_checker import TLSCryptoStrengthChecker
-from .tls_protocol_cipher_checker import TLSProtocolCipherChecker
-from .tls_extension_checker import TLSExtensionChecker
+import json
+import argparse
+import importlib.util
+from urllib.parse import urlparse
+from tls_base import TLSChecker
 
+def discover_checkers():
+    base = os.path.dirname(__file__)
+    checkers = []
+    for fn in os.listdir(base):
+        if fn.startswith('tls_') and fn.endswith('.py'):
+            spec = importlib.util.spec_from_file_location(fn[:-3], os.path.join(base, fn))
+            mod  = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            for attr in dir(mod):
+                cls = getattr(mod, attr)
+                if isinstance(cls, type) and issubclass(cls, TLSChecker) and cls is not TLSChecker:
+                    checkers.append(cls)
+    return checkers
 
-def analyze_tls(hostname):
-    print(f"\n🔍 TLS Analysis for: {hostname}")
+def main():
+    parser = argparse.ArgumentParser(description="TLS audit runner")
+    parser.add_argument('host', help="Hostname or URL to audit")
+    parser.add_argument('-p','--port',      type=int, default=None, help="TCP port")
+    parser.add_argument('-t','--timeout',   type=int, default=5,   help="Timeout (s)")
+    parser.add_argument('-c','--trusted-ca',           help="Trusted CA file")
+    parser.add_argument('-f','--format',    choices=['text','json'], default='text')
+    args = parser.parse_args()
 
-    results = {}
+    # normalize host & port
+    parsed = urlparse(args.host if '://' in args.host else '//' + args.host)
+    host = parsed.hostname or args.host
+    port = args.port or (parsed.port or 443)
 
-    # 1. Certificate basics
-    try:
-        cert_checker = TLSCertificateChecker(hostname)
-        cert_info = cert_checker.run()
-        results.update(cert_info)
-    except Exception as e:
-        results["certificate_error"] = f"Certificate check failed: {e}"
+    checkers = discover_checkers()
+    if not checkers:
+        print("No TLS checkers found.", file=sys.stderr)
+        sys.exit(2)
 
-    # 2. OCSP / revocation
-    try:
-        revocation_checker = TLSRevocationChecker(hostname)
-        ok, message = revocation_checker.check_ocsp_revocation()
-        results["revocation_status"] = message
-    except Exception as e:
-        results["revocation_status"] = f"Revocation check failed: {e}"
+    results = []
+    for C in checkers:
+        inst  = C(host, port=port, timeout=args.timeout, trusted_ca_file=args.trusted_ca)
+        for name, code, msg in inst.report():
+            if args.format == 'text':
+                print(f"[{name}] {code}: {msg}")
+            else:
+                results.append({'check': name, 'code': code, 'message': msg})
 
-    # 3. Key size / crypto strength
-    try:
-        crypto_checker = TLSCryptoStrengthChecker(hostname)
-        crypto_result = crypto_checker.run()
-        results.update(crypto_result)
-    except Exception as e:
-        results["crypto_strength"] = f"Crypto check failed: {e}"
+    if args.format == 'json':
+        output = {'host': host, 'port': port, 'results': results}
+        print(json.dumps(output, indent=2))
 
-    # 4. TLS version & cipher
-    try:
-        proto_checker = TLSProtocolCipherChecker(hostname)
-        proto_result = proto_checker.run()
-        results.update(proto_result)
-    except Exception as e:
-        results["protocol_cipher_check"] = f"Protocol/Cipher check failed: {e}"
+    # exit non-zero if any failure
+    exit_code = 0
+    for r in (results if args.format=='json' else []):
+        if r['code'] != 'ok':
+            exit_code = 1
+            break
+    if args.format=='text':
+        # in text mode, look for any “[<checker>]” not ending in “ok:”
+        for line in sys.stdout.getvalue().splitlines() if hasattr(sys.stdout,"getvalue") else []:
+            if not line.endswith(":") and " code: ok" in line.lower():
+                continue
+            if "ok:" not in line:
+                exit_code = 1
+                break
+    sys.exit(exit_code)
 
-    # 5. Extensions
-    try:
-        ext_checker = TLSExtensionChecker(hostname)
-        ext_result = ext_checker.run()
-        results.update(ext_result)
-    except Exception as e:
-        results["extension_check"] = f"Extension check failed: {e}"
-
-    print("\n🔎 Report:")
-    for key, value in results.items():
-        if not key.endswith("_ok"):
-            print(f"{key}: {value}")
-
-    return results
-
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python tls_runner.py <hostname>")
-        sys.exit(1)
-
-    analyze_tls(sys.argv[1])
+if __name__ == '__main__':
+    main()
