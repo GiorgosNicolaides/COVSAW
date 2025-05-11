@@ -1,4 +1,4 @@
-from tls_base import TLSChecker
+from covsaw.scripts.tls.tls_base import TLSChecker
 
 class TLSProtocolCipherChecker(TLSChecker):
     NAME = 'protocol-cipher'

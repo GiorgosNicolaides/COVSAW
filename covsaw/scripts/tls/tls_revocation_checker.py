@@ -1,5 +1,4 @@
-# tls_revocation_checker.py
-from tls_base import TLSChecker
+from covsaw.scripts.tls.tls_base import TLSChecker
 from cryptography import x509
 from cryptography.x509.ocsp import OCSPRequestBuilder, load_der_ocsp_response, OCSPCertStatus
 from cryptography.x509.oid import AuthorityInformationAccessOID

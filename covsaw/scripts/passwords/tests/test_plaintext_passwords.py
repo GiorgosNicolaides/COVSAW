@@ -4,7 +4,7 @@ import os
 import tempfile
 import re
 import pytest
-from scripts.passwords.detect_plaintext_passwords import PlaintextPasswordChecker
+from covsaw.scripts.passwords.detect_plaintext_passwords import PlaintextPasswordChecker
 import ast
 
 def _run_checker(code: str):

@@ -1,4 +1,4 @@
-from tls_base import TLSChecker
+from covsaw.scripts.tls.tls_base import TLSChecker
 from cryptography import x509
 
 class TLSExtensionChecker(TLSChecker):

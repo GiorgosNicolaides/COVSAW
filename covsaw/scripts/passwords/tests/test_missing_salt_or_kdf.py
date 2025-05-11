@@ -3,7 +3,7 @@
 import os
 import tempfile
 import pytest
-from scripts.passwords.detect_missing_salt_or_kdf import MissingSaltOrKDFChecker
+from covsaw.scripts.passwords.detect_missing_salt_or_kdf import MissingSaltOrKDFChecker
 
 def _run_checker(code: str):
     # write code to a temp file and run the checker

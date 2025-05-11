@@ -3,7 +3,7 @@
 import os
 import tempfile
 import pytest
-from scripts.passwords.detect_weak_password_hashing import WeakPasswordHashingChecker
+from covsaw.scripts.passwords.detect_weak_password_hashing import WeakPasswordHashingChecker
 
 def _run_checker(code: str):
     # write code, run analyze(), return issues

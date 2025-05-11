@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
 import os
 import sys
 import json
 import argparse
 import importlib.util
 from urllib.parse import urlparse
+from covsaw.scripts.tls.tls_base import TLSChecker
 
 def discover_checkers():
     base = os.path.dirname(__file__)
