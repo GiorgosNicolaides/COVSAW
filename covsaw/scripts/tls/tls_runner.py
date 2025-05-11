@@ -5,7 +5,6 @@ import json
 import argparse
 import importlib.util
 from urllib.parse import urlparse
-from tls_base import TLSChecker
 
 def discover_checkers():
     base = os.path.dirname(__file__)
