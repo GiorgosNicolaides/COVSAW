@@ -17,15 +17,13 @@ def run_cmd(cmd):
 def main():
     print_banner()
     parser = argparse.ArgumentParser(
-        description="CovS.A.W Multi-Suite Cryptography Audit CLI"
+        description="COVSAW Multi-Suite Cryptography Audit CLI"
     )
     parser.add_argument('target',
         help='File/directory path (for static scans) or hostname/URL (for TLS)')
-    parser.add_argument('-c','--trusted-ca',
-        help='Trusted-CA names file (for TLS certificate checks)')
-    parser.add_argument('-f','--format',
+    parser.add_argument('--format',
         choices=['text','json'], default='text',
-        help='Output format for all runners')
+        help='Output format for tls runner only')
     parser.add_argument('-t','--tls',       action='store_true', help='Run TLS audit')
     parser.add_argument('-p','--passwords', action='store_true', help='Run password-storage checks')
     parser.add_argument('-s','--signatures',action='store_true', help='Run signature-scheme checks')
@@ -38,8 +36,6 @@ def main():
     to_run = []
     if args.all or args.tls:
         cmd = [PYTHON, '-m', 'covsaw.scripts.tls.tls_runner', args.target, '-f', args.format]
-        if args.trusted_ca:
-            cmd += ['-c', args.trusted_ca]
         to_run.append(("🔒 TLS Audit", cmd))
 
     if args.all or args.passwords:
