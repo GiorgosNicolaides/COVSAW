@@ -19,15 +19,13 @@ build/
 venv/
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
-
-
-scripts/signatures/__pycache__/detect_nonconstant_compare.cpython-312.pyc
-scripts/signatures/__pycache__/detect_missing_verification.cpython-312.pyc
-scripts/signatures/__pycache__/detect_insecure_signature_algos.cpython-312.pyc
-scripts/tls/__pycache__/tls_certificate_checker.cpython-312.pyc
-scripts/tls/__pycache__/tls_certificate_checker.cpython-312.pyc
-scripts/tls/__pycache__/tls_crypto_strength_checker.cpython-312.pyc
-scripts/tls/__pycache__/tls_extension_checker.cpython-312.pyc
-scripts/tls/__pycache__/tls_protocol_cipher_checker.cpython-312.pyc
-scripts/tls/__pycache__/tls_revocation_checker.cpython-312.pyc
-scripts/tls/__pycache__/tls_runner.cpython-312.pyc
+# Ignore Jupyter Notebook metadata
+.ipynb_checkpoints/
+# Ignore Jupyter Notebook output
+*.ipynb
+# Ignore Jupyter Notebook temporary files
+*.tmp
+# Ignore Jupyter Notebook hidden files
+.*.ipynb
+# Ignore Jupyter Notebook hidden directories
+.*.ipynb_checkpoints/
