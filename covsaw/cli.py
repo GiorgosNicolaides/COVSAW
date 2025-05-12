@@ -28,38 +28,44 @@ def main():
     parser.add_argument('-p','--passwords', action='store_true', help='Run password-storage checks')
     parser.add_argument('-s','--signatures',action='store_true', help='Run signature-scheme checks')
     parser.add_argument('-y','--symmetric', action='store_true', help='Run symmetric-crypto checks')
-    parser.add_argument('-k','--keymgmt',   action='store_true', help='Run key-management checks')
+    parser.add_argument('-k','--key',   action='store_true', help='Run key-management checks')
+    parser.add_argument('-m','--misuse', action='store_true', help='Run misuse checks')
     parser.add_argument('-a','--all',       action='store_true', help='Run all modules')
     args = parser.parse_args()
 
     # Determine which modules to run, invoking them as package modules
     to_run = []
-    if args.all or args.tls:
+    if args.tls:
         cmd = [PYTHON, '-m', 'covsaw.scripts.tls.tls_runner', args.target, '-f', args.format]
         to_run.append(("🔒 TLS Audit", cmd))
 
     if args.all or args.passwords:
         to_run.append(("🔐 Password-Storage Audit", [
             PYTHON, '-m', 'covsaw.scripts.passwords.password_storage_runner',
-            '-f', args.format, args.target
+            args.target
         ]))
 
     if args.all or args.signatures:
         to_run.append(("✍️  Signature-Scheme Audit", [
             PYTHON, '-m', 'covsaw.scripts.signatures.signature_scheme_runner',
-            '-f', args.format, args.target
+            '--format', args.format, args.target
         ]))
 
     if args.all or args.symmetric:
         to_run.append(("🔑 Symmetric-Crypto Audit", [
             PYTHON, '-m', 'covsaw.scripts.symmetric.symmetric_analysis_runner',
-            '-f', args.format, args.target
+            '--format', args.format, args.target
         ]))
 
-    if args.all or args.keymgmt:
+    if args.all or args.key:
         to_run.append(("🔐 Key-Management Audit", [
             PYTHON, '-m', 'covsaw.scripts.key.key_management_runner',
-            '-f', args.format, args.target
+            '--format', args.format, args.target
+        ]))
+    if args.all or args.misuse:
+        to_run.append(("⚠️  Misuse Audit", [
+            PYTHON, '-m', 'covsaw.scripts.misuse.misuse_runner',
+            '--format', args.format, args.target
         ]))
 
     if not to_run:

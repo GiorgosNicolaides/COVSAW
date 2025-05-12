@@ -1,6 +1,8 @@
 import ast
 import os
 import toml
+from Crypto.Hash import SHA1
+from covsaw.scripts.signatures.detect_missing_verification import SignatureChecker
 
 # Default configuration for insecure hash algorithms
 DEFAULT_CONFIG = {

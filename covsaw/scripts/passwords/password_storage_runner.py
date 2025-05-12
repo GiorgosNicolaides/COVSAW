@@ -9,7 +9,7 @@ def analyze_file(file_path):
         print(f"Error: File not found: {file_path}")
         return
 
-    print(f"\n[+] Analyzing password storage practices in: {file_path}")
+    print(f"[+] Analyzing password storage practices in: {file_path}")
 
     all_issues = []
 
@@ -26,7 +26,6 @@ def analyze_file(file_path):
     if not all_issues:
         print("✅ No password storage issues found.")
     else:
-        print("⚠️  Password storage issues detected:")
         for line, issue in sorted(all_issues, key=lambda x: x[0]):
             print(f"Line {line}: {issue}")
 
