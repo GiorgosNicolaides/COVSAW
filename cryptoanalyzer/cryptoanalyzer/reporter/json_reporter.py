@@ -1,28 +1,60 @@
-# cryptoanalyzer/reporter/json_reporter.py
+# cryptoanalyzer/reporters/json_reporter.py
 
 import json
-from typing import List
+from typing import List, Dict, Any
 from cryptoanalyzer.utils.metadata import Finding
 
-class JsonReporter:
+
+class JSONReporter:
     """
-    Reporter that serializes Findings to JSON.
+    Reporter that outputs findings as a JSON array. Automatically removes duplicate
+    findings (same file, line, column, and CWE).
     """
 
-    def report(self, findings: List[Finding]) -> str:
+    @staticmethod
+    def dedupe_findings(findings: List[Finding]) -> List[Finding]:
         """
-        :param findings: List of Finding objects
-        :return: A pretty-printed JSON string
+        Remove duplicate findings. Two findings are considered duplicates if they share
+        the same file, line, column, and CWE identifier.
         """
-        # Convert each Finding to a simple dict
-        serialized = []
+        seen = set()
+        unique = []
         for f in findings:
-            serialized.append({
-                "file":       f.file_path,
-                "line":       f.line,
-                "col":        f.col,
-                "rule":       f.rule,
-                "message":    f.message,
-                "cwe_ids":    f.cwe_ids,
+            # We treat each CWE separately, but if a Finding has multiple CWE IDs,
+            # we flatten them so that each (file, line, col, cwe) tuple is unique.
+            for cwe in f.cwe_ids:
+                key = (f.file_path, f.line, f.col, cwe)
+                if key not in seen:
+                    seen.add(key)
+                    # Create a new Finding object with just this single CWE ID to preserve one‐per‐CWE uniqueness
+                    unique.append(
+                        Finding(
+                            file_path=f.file_path,
+                            line=f.line,
+                            col=f.col,
+                            rule=f.rule,
+                            message=f.message,
+                            cwe_ids=[cwe],
+                        )
+                    )
+        return unique
+
+    @staticmethod
+    def format(findings: List[Finding]) -> str:
+        """
+        Return JSON string for the list of findings, after removing duplicates.
+        """
+        deduped = JSONReporter.dedupe_findings(findings)
+
+        output_list: List[Dict[str, Any]] = []
+        for f in deduped:
+            output_list.append({
+                "file": f.file_path,
+                "line": f.line,
+                "col": f.col,
+                "rule": f.rule,
+                "message": f.message,
+                "cwe_ids": f.cwe_ids,
             })
-        return json.dumps(serialized, indent=2)
+
+        return json.dumps(output_list, indent=2)
