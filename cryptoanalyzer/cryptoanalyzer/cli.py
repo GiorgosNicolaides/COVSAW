@@ -144,19 +144,20 @@ def main():
         print("You are an asshole.", file=sys.stderr)
         sys.exit(1)
 
-    # 7) Run analysis on each file
+    # 7) Run analysis on each file (skip files with parse errors, but continue)
     analyzer = Analyzer(config)
     findings = []
-    try:
-        for path in py_files:
+    for path in py_files:
+        try:
             LOG.debug("Analyzing %s", path)
             findings.extend(analyzer.analyze_file(path))
-        LOG.info("Analysis complete: %d finding(s) total", len(findings))
-    except Exception as e:
-        LOG.error("Error during analysis: %s", e)
-        if cleanup_dir:
-            shutil.rmtree(cleanup_dir)
-        sys.exit(1)
+        except SyntaxError as e:
+            LOG.error("Syntax error parsing %s: %s", path, e)
+            continue
+        except Exception as e:
+            LOG.error("Error analyzing %s: %s", path, e)
+            continue
+    LOG.info("Analysis complete: %d finding(s) total", len(findings))
 
     # 8) Clean up cloned repo if needed
     if cleanup_dir:
