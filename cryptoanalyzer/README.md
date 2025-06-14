@@ -1,50 +1,114 @@
+# CryptoAnalyzer
 
-cryptoanalyzer/
-└── rules/
-    ├── __init__.py
+CryptoAnalyzer is a static-analysis command-line tool for detecting cryptographic vulnerabilities in Python code. It inspects Python source files for patterns mapped to Common Weakness Enumeration (CWE) identifiers and produces detailed reports in JSON, CSV, or HTML formats.
 
-    ├── credentials/                       # CWE-798
-    │   ├── __init__.py
-    │   └── hardcoded_credentials.py       # HardcodedCredentialsRule
+## Features
 
-    ├── plaintext_secrets/                 # CWE-256, CWE-261
-    │   ├── __init__.py
-    │   └── plaintext_storage.py           # PlaintextStorageRule
+- **Comprehensive Rule Set**  
+  Detects a wide range of cryptographic issues, including:
+  - Hard-coded keys and credentials (CWE-321, CWE-798, etc.)
+  - Plaintext or weak storage (CWE-256, CWE-312–318, CWE-526)
+  - Broken or risky algorithms (CWE-327, CWE-780, CWE-1240)
+  - Improper API usage and missing integrity checks (CWE-311, CWE-353, etc.)
+  - Predictable or insufficient randomness (CWE-323, CWE-330–338)
+  - Missing entity authentication (CWE-322)
 
-    ├── missing_crypto/                    # CWE-311, CWE-353, CWE-354
-    │   ├── __init__.py
-    │   ├── missing_encryption.py          # MissingEncryptionRule
-    │   └── missing_integrity.py           # MissingIntegrityRule
+- **Flexible Input**  
+  Scan a single file, a directory (recursive), or a GitHub repository (shallow clone).
 
-    ├── certificate/                       # CWE-295, CWE-299
-    │   ├── __init__.py
-    │   ├── improper_validation.py         # ImproperCertificateValidationRule
-    │   └── missing_revocation.py          # MissingCertificateRevocationCheckRule
+- **Multi-Format Reports**  
+  Export findings in:
+  - **JSON**: machine-readable array of findings.
+  - **CSV**: spreadsheet-friendly rows.
+  - **HTML**: styled table, auto-open in browser.
 
-    ├── algorithm_params/                  # CWE-327, CWE-328, CWE-759, CWE-760, CWE-780
-    │   ├── __init__.py
-    │   ├── broken_algorithm.py            # BrokenAlgorithmRule
-    │   ├── hash_without_salt.py           # HashWithoutSaltRule
-    │   └── rsa_without_oaep.py            # RsaNoOaepRule
+- **Extensible Architecture**  
+  Add new detection rules by dropping modules under `rules/`. The tool auto-discovers and applies them.
 
-    ├── randomness/                        # CWE-330
-    │   ├── __init__.py
-    │   └── insecure_randomness.py         # InsecureRandomRule
+- **Configurable**  
+  Disable specific rules via a simple TOML, YAML, or INI config file (`cryptoanalyzer.toml`).
 
-    ├── randomness_extra/                  # CWE-323, CWE-329, CWE-338
-    │   ├── __init__.py
-    │   ├── nonce_reuse.py                 # NonceReuseRule
-    │   ├── predictable_iv.py              # PredictableIVRule
-    │   └── weak_prng.py                   # WeakPrngRule
+- **User-Friendly CLI**  
+  Clear help text, colored banner, and robust error handling.
 
-    ├── padding_oracle/                    # CWE-346
-    │   ├── __init__.py
-    │   └── padding_oracle.py              # PaddingOracleRule
+## Installation
 
-    ├── api_misuse/                        # CWE-328 (HMAC)
-    │   ├── __init__.py
-    │   └── hmac_default_md5.py            # HmacDefaultMd5Rule
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourorg/cryptoanalyzer.git
+   cd cryptoanalyzer
+   ```
 
-    └── cleartext/                         # CWE-319–CWE-318
-        ├── __init__.py
-        └── cleartext_issues.py            # CleartextTransmissionRule & CleartextStorageRule
+2. (Optional) Create and activate a virtual environment:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. (Optional) Install globally:
+   ```bash
+   pip install .
+   ```
+
+## Usage
+
+```bash
+cryptoanalyzer TARGET [-c CONFIG] [-f {json,html,csv}] [-o OUTPUT]
+```
+
+- **TARGET**:  
+  - A local directory path (recursive).  
+  - A single `.py` file or glob pattern (e.g. `src/**/*.py`).  
+  - A GitHub URL (shallow clone).
+
+- **Options**:
+  - `-c, --config CONFIG`: Path to a TOML/YAML/INI config file.
+  - `-f, --format {json,html,csv}`: Output format (default: `json`).
+  - `-o, --output OUTPUT`: Output file path. For HTML, if omitted, opens in browser.
+
+### Examples
+
+- Scan a file and print JSON:
+  ```bash
+  cryptoanalyzer app.py
+  ```
+
+- Scan a directory and save CSV:
+  ```bash
+  cryptoanalyzer project/ -f csv -o findings.csv
+  ```
+
+- Scan a GitHub repo and view HTML report:
+  ```bash
+  cryptoanalyzer https://github.com/user/repo -f html
+  ```
+
+## Configuration
+
+Create a `cryptoanalyzer.toml`, `.yaml`, or `.ini` file in your project root:
+
+```toml
+disabled_rules = [
+  "CWE321HardcodedCryptoKey",
+  "CWE329PredictableIV"
+]
+```
+
+## Contributing
+
+We welcome contributions! To add a new rule or feature:
+
+1. Fork the repository and create a new branch.
+2. Add or modify code (follow PEP 8 and existing patterns).
+3. Write tests under `tests/`.
+4. Run `black .`, `flake8`, and `pytest`.
+5. Submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
