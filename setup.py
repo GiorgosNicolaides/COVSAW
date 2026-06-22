@@ -1,51 +1,29 @@
-from setuptools import setup, find_packages
-from pathlib import Path
+# setup.py
 
-# Read the long description from your README
-long_description = Path(__file__).parent.joinpath("README.md").read_text()
+from setuptools import setup, find_packages
 
 setup(
-    name='covsaw',
-    version='1.0.0',
-    description='Classification Of Cryptographic Vulnerabilities and Security Assessment of Web Applications',
-    long_description=long_description,
-    long_description_content_type='text/markdown',
-    author='Giorgos Nicolaides',
-    author_email='you@example.com',
-    url='https://github.com/yourusername/covsaw',
-
-    # Automatically find your package and subpackages
-    packages=find_packages(),
-
-    # Runtime dependencies
+    name="cryptoanalyzer",
+    version="2.0.0",
+    description="Static analysis of cryptographic usage vulnerabilities in Python code",
+    author="Giorgos Nicolaides",
+    packages=find_packages(exclude=["tests", "examples", "docs"]),
     install_requires=[
-        'cryptography>=3.4',
-        'requests>=2.25',
-        'toml>=0.10.0',
-        'colorama>=0.4.0',
+        "toml>=0.10.2",      # TOML config loading
+        "PyYAML>=6.0",       # YAML config loading
+        "colorama>=0.4.6",   # colored terminal banner output
     ],
-    # Optional dependencies for development
     extras_require={
-        'dev': [
-            'pytest>=6.0',
-            'pytest-sslserver',
-            'flake8',
-        ],
+        "dev": ["pytest>=7.0", "black>=23.0", "flake8>=6.0"],
     },
-
-    # Define console entry point for the CLI
     entry_points={
-        'console_scripts': [
-            'covsaw=covsaw.cli:main',
+        "console_scripts": [
+            "cryptoanalyzer=cryptoanalyzer.cli:main",
         ],
     },
-
-    include_package_data=True,
-    zip_safe=False,
-    python_requires='>=3.6',
     classifiers=[
-        'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
     ],
+    python_requires=">=3.8",
 )

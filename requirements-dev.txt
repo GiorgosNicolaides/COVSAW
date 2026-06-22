@@ -1,0 +1,5 @@
+# Development dependencies (testing, linting, formatting)
+-r requirements.txt
+pytest>=7.0
+black>=23.0
+flake8>=6.0
