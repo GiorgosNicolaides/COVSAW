@@ -24,7 +24,6 @@ from cryptoanalyzer.utils.ast_utils import (
     get_constant_value,
     extract_string_from_dict_key,
     get_full_attr_name,
-    is_call_to,
 )
 
 

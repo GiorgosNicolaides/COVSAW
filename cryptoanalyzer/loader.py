@@ -5,7 +5,6 @@ Helpers for discovering Python source files and parsing them into ASTs,
 respecting exclude patterns from configuration.
 """
 
-import os
 import glob
 import fnmatch
 import ast

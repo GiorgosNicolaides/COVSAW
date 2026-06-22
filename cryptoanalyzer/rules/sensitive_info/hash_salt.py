@@ -45,7 +45,6 @@ from cryptoanalyzer.utils.ast_utils import (
     get_full_attr_name,
     is_string_literal,
     is_bytes_literal,
-    is_name_or_attr,
 )
 
 class Cwe759Cwe760HashSaltRule(Rule):

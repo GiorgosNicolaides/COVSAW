@@ -26,11 +26,11 @@ CWE-325 in the context of missing integrity steps for symmetric encryption.
 """
 
 import ast
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List
 
 from cryptoanalyzer.rules import Rule
 from cryptoanalyzer.utils.metadata import Finding
-from cryptoanalyzer.utils.ast_utils import get_full_attr_name, is_call_to, is_name_or_attr
+from cryptoanalyzer.utils.ast_utils import get_full_attr_name
 
 
 class Cwe325MissingStepRule(Rule):

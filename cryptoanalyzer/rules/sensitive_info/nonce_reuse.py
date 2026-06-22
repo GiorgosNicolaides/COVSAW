@@ -20,11 +20,16 @@ flagging any that occur more than once, we ensure no nonce/IV value is reused.
 
 import ast
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from cryptoanalyzer.rules import Rule
 from cryptoanalyzer.utils.metadata import Finding
-from cryptoanalyzer.utils.ast_utils import get_full_attr_name, is_string_literal, is_bytes_literal
+from cryptoanalyzer.utils.ast_utils import (
+    get_full_attr_name,
+    get_constant_value,
+    is_string_literal,
+    is_bytes_literal,
+)
 
 
 class Cwe323NonceReuseRule(Rule):

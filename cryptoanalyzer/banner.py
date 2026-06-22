@@ -1,4 +1,5 @@
 import random
+import sys
 import time
 import os
 
@@ -19,7 +20,7 @@ def get_ascii_art() -> str:
                                         
 
 
-Classification of Cryptograhic Vulnerabilies and Security Assesment of Web Appilcations 
+Classification Of Cryptographic Vulnerabilities and Security Assessment of Web applications 
 
     """
 
@@ -31,7 +32,7 @@ Classification of Cryptograhic Vulnerabilies and Security Assesment of Web Appil
 
 
 
- Classification of Cryptograhic Vulnerabilies and Security Assesment of Web Appilcations 
+ Classification Of Cryptographic Vulnerabilities and Security Assessment of Web applications 
 
 """
 
@@ -43,7 +44,7 @@ Classification of Cryptograhic Vulnerabilies and Security Assesment of Web Appil
 
 
 
- Classification of Cryptograhic Vulnerabilies and Security Assesment of Web Appilcations 
+ Classification Of Cryptographic Vulnerabilities and Security Assessment of Web applications 
 
 """
 
@@ -67,9 +68,16 @@ def print_banner(duration: float = 2.5) -> None:
     Prints the ASCII-art banner (for `duration` seconds) and then clears it.
     Default duration is 2.5 seconds.
     """
+    # Only display the decorative banner in an interactive terminal. When stdout
+    # is redirected or piped (e.g. `-f json > out.json`), skip it entirely so the
+    # report on stdout is never polluted with banner art or clear-screen escapes.
+    if not (sys.stdout.isatty() and sys.stderr.isatty()):
+        return
+
     init(autoreset=True)
     ascii_art = get_ascii_art()
-    print(ascii_art)
+    # Write the banner to stderr to keep stdout reserved for machine-readable output.
+    print(ascii_art, file=sys.stderr)
     time.sleep(duration)
 
     # Clear the banner from the terminal

@@ -21,13 +21,12 @@ By catching these patterns, we ensure IVs/nonces are generated via secure RNG (e
 """
 
 import ast
-from typing import List, Optional
+from typing import List
 
 from cryptoanalyzer.rules import Rule
 from cryptoanalyzer.utils.metadata import Finding
 from cryptoanalyzer.utils.ast_utils import (
     get_full_attr_name,
-    is_name_or_attr,
 )
 
 

@@ -1,4 +1,16 @@
-# tests/test1.py
+"""
+examples/vulnerable_sample.py
+
+A DELIBERATELY INSECURE sample used to demonstrate CryptoAnalyzer.
+
+Every function below contains a textbook cryptographic mistake (annotated with
+the CWE it maps to). This file is NOT meant to be run as real code or imported
+as a library — it exists so you can point the scanner at it and see findings:
+
+    cryptoanalyzer examples/vulnerable_sample.py -f json
+
+Do not copy any of these patterns into production code.
+"""
 
 import hashlib
 import random

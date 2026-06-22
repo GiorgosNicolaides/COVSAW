@@ -19,11 +19,11 @@ and single or default seeds for CWE-337.
 
 import ast
 import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 from cryptoanalyzer.rules import Rule
 from cryptoanalyzer.utils.metadata import Finding
-from cryptoanalyzer.utils.ast_utils import get_full_attr_name, is_string_literal, get_constant_value
+from cryptoanalyzer.utils.ast_utils import get_full_attr_name
 
 
 # Consider “today” for any date-based seed checks (not strictly needed here but kept for symmetry)

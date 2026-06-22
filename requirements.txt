@@ -1,0 +1,4 @@
+# Runtime dependencies for CryptoAnalyzer
+toml>=0.10.2        # parse TOML configuration files
+PyYAML>=6.0        # parse YAML configuration files
+colorama>=0.4.6    # cross-platform colored terminal output for the banner

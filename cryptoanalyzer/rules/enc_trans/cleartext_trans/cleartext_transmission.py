@@ -21,7 +21,6 @@ from cryptoanalyzer.utils.ast_utils import (
     is_string_literal,
     get_constant_value,
     get_full_attr_name,
-    is_call_to,
 )
 
 class Cwe319CleartextTransmissionRule(Rule):

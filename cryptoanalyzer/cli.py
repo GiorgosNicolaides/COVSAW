@@ -114,7 +114,8 @@ def main():
     LOG.debug("Loading configuration from %s", args.config)
     config = Config.load(args.config)
 
-    # 4) If target is a GitHub URL, clone it first
+    # 4) Resolve the scan target. GitHub URLs are cloned into a temp dir;
+    #    local targets (file, directory, or glob) are validated up front.
     cleanup_dir = None
     scan_path = args.target
     if _is_github_url(args.target):
@@ -123,6 +124,13 @@ def main():
             scan_path = cleanup_dir
         except RuntimeError as e:
             LOG.error("Error cloning repo: %s", e)
+            sys.exit(1)
+    else:
+        # Glob patterns are expanded later; only validate concrete paths here.
+        is_glob = any(ch in args.target for ch in ("*", "?", "["))
+        if not is_glob and not os.path.exists(args.target):
+            LOG.error("Target path does not exist: %s", args.target)
+            print(f"Target path does not exist: {args.target}", file=sys.stderr)
             sys.exit(1)
 
     # 5) Discover .py files to analyze
@@ -136,12 +144,12 @@ def main():
             shutil.rmtree(cleanup_dir)
         sys.exit(1)
 
-    # 6) If no .py files found, insult and exit
+    # 6) If no .py files found, report the problem and exit
     if not py_files:
         if cleanup_dir:
             shutil.rmtree(cleanup_dir)
         LOG.error("No Python files found in target: %s", scan_path)
-        print("You are an asshole.", file=sys.stderr)
+        print(f"No Python (.py) files found in target: {scan_path}", file=sys.stderr)
         sys.exit(1)
 
     # 7) Run analysis on each file (skip files with parse errors, but continue)

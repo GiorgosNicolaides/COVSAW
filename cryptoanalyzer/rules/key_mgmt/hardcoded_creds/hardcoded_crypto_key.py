@@ -27,7 +27,6 @@ from cryptoanalyzer.utils.metadata import Finding
 from cryptoanalyzer.utils.ast_utils import (
     is_string_literal,
     is_bytes_literal,
-    get_constant_value,
     extract_string_from_dict_key,
     get_full_attr_name,
 )

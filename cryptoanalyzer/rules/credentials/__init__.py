@@ -1,0 +1,1 @@
+# cryptoanalyzer/rules/credentials package

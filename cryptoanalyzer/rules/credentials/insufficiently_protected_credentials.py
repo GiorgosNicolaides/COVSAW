@@ -1,4 +1,4 @@
-# cryptoanalyzer/rules/credentials/cwe_522_insufficiently_protected_credentials.py
+# cryptoanalyzer/rules/credentials/insufficiently_protected_credentials.py
 
 """
 Rule to detect Insufficiently Protected Credentials (CWE-522).

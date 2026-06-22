@@ -1,31 +1,41 @@
-# Ignore Python bytecode caches
+# Byte-compiled / optimized / cache files
 __pycache__/
-# Ignore Python compiled files
 *.py[cod]
-# Ignore Python test cache
+*$py.class
+
+# Test & coverage artifacts
 .pytest_cache/
-# Ignore Python coverage reports
 .coverage
-# Ignore Python logs
-*.log
-# Ignore Python egg files
+.coverage.*
+htmlcov/
+.tox/
+
+# Packaging / distribution
+build/
+dist/
 *.egg-info/
 *.egg
-# Ignore Python distribution files
-dist/
-build/
-# Ignore Python virtual environments
+.eggs/
+
+# Virtual environments
 .venv/
 venv/
-# Ignore Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-# Ignore Jupyter Notebook metadata
-.ipynb_checkpoints/
-# Ignore Jupyter Notebook output
-*.ipynb
-# Ignore Jupyter Notebook temporary files
+env/
+
+# Logs and temp files
+*.log
 *.tmp
-# Ignore Jupyter Notebook hidden files
-.*.ipynb
-# Ignore Jupyter Notebook hidden directories
-.*.ipynb_checkpoints/
+
+# Generated reports
+cryptoanalyzer_report.html
+
+# Environment files (never commit real secrets)
+.env
+
+# Editor / OS noise
+.idea/
+.vscode/
+.DS_Store
+
+# Jupyter checkpoints
+.ipynb_checkpoints/

@@ -32,7 +32,6 @@ from cryptoanalyzer.utils.ast_utils import (
     is_string_literal,
     get_constant_value,
     extract_string_from_dict_key,
-    get_full_attr_name,
 )
 
 
@@ -62,7 +61,6 @@ class Cwe258Cwe260PasswordInConfigRule(Rule):
             # ------------------------------------------------------------
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                 func = node.func
-                full = get_full_attr_name(func).lower()
                 # Match calls ending with ".set"
                 if func.attr == "set":
                     # Check that the second argument is the string "password"

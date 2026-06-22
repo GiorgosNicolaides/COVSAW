@@ -17,7 +17,7 @@ from typing import List
 
 from cryptoanalyzer.rules import Rule
 from cryptoanalyzer.utils.metadata import Finding
-from cryptoanalyzer.utils.ast_utils import get_full_attr_name, is_string_literal, is_bytes_literal
+from cryptoanalyzer.utils.ast_utils import get_full_attr_name
 
 
 class Cwe335IncorrectPrngSeedUsageRule(Rule):
